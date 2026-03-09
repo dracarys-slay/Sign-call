@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign-Call Prototype</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --accent: #38bdf8;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08), transparent 25%),
+        radial-gradient(circle at 80% 0%, rgba(129, 140, 248, 0.08), transparent 22%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 24px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto 48px;
+      padding: 0 16px 32px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    button, label.toggle {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.14), rgba(129, 140, 248, 0.14));
+      border: 1px solid rgba(226, 232, 240, 0.08);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      font-weight: 600;
+    }
+
+    button:hover, label.toggle:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(226, 232, 240, 0.08);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .video-wrapper {
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(226, 232, 240, 0.08);
+      background: #0b1220;
+      aspect-ratio: 4 / 3;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #0b1220;
+    }
+
+    .tag {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      border: 1px solid rgba(226, 232, 240, 0.08);
+    }
+
+    .transcript {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(226, 232, 240, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 80px;
+      line-height: 1.6;
+      font-size: 1.05rem;
+    }
+
+    .history {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .history li {
+      background: rgba(226, 232, 240, 0.04);
+      border: 1px solid rgba(226, 232, 240, 0.08);
+      padding: 10px 12px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history time {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 0.92rem;
+      margin-top: 8px;
+      width: fit-content;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 6px 0 0;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      padding-bottom: 24px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sign-Call Prototype</h1>
+    <p>Accessible video calling with simulated sign language-to-speech & captions.</p>
+  </header>
+
+  <main>
+    <div class="controls">
+      <button id="startCall">Start call & camera</button>
+      <button id="simulate" disabled>Simulate sign detection</button>
+      <label class="toggle">
+        <input type="checkbox" id="autoMode" />
+        Auto-translate every 6 seconds
+      </label>
+      <button id="clearHistory">Clear transcript history</button>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Video call (local + mirrored remote)</h2>
+        <div class="video-wrapper">
+          <video id="localVideo" autoplay muted playsinline></video>
+          <span class="tag">You</span>
+        </div>
+        <div class="video-wrapper" style="margin-top:12px;">
+          <video id="remoteVideo" autoplay muted playsinline></video>
+          <span class="tag">Remote (mirrored demo)</span>
+        </div>
+        <p class="status" id="videoStatus">Camera not started.</p>
+      </section>
+
+      <section class="card">
+        <h2>Live captions</h2>
+        <div class="transcript" id="transcript">Waiting for translation…</div>
+        <div class="badge">Text + audio output</div>
+        <p class="status" id="speechStatus">Speech engine ready.</p>
+      </section>
+
+      <section class="card">
+        <h2>Recent translations</h2>
+        <ul class="history" id="history">
+          <li>Try starting the call, then enable auto-translate.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    Prototype demo. Sign recognition is simulated—replace the mock recognizer with a real model or API for production use.
+  </footer>
+
+  <script>
+    const startButton = document.getElementById("startCall");
+    const simulateButton = document.getElementById("simulate");
+    const autoMode = document.getElementById("autoMode");
+    const transcriptEl = document.getElementById("transcript");
+    const historyEl = document.getElementById("history");
+    const videoStatus = document.getElementById("videoStatus");
+    const speechStatus = document.getElementById("speechStatus");
+    const clearHistoryButton = document.getElementById("clearHistory");
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+
+    let localStream = null;
+    let autoTimer = null;
+
+    const demoSigns = [
+      { label: "Hello", message: "Hello! How are you?" },
+      { label: "Thank you", message: "Thank you for your help." },
+      { label: "Need assistance", message: "I need assistance. Can you please respond?" },
+      { label: "Yes", message: "Yes, that works for me." },
+      { label: "No", message: "No, please try a different option." },
+      { label: "Call doctor", message: "Please call a doctor, it's urgent." },
+      { label: "Happy", message: "I'm happy with the solution. Thanks!" },
+      { label: "Food", message: "I would like to order some food." }
+    ];
+
+    async function startCamera() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        localVideo.srcObject = localStream;
+        // Mirror to a demo remote feed so the UI feels like a call.
+        remoteVideo.srcObject = localStream;
+        videoStatus.textContent = "Camera started. Remote feed is mirrored locally for demo.";
+        startButton.disabled = true;
+        simulateButton.disabled = false;
+      } catch (err) {
+        console.error(err);
+        videoStatus.textContent = "Unable to access camera. Please check permissions.";
+      }
+    }
+
+    function speak(text) {
+      if (!("speechSynthesis" in window)) {
+        speechStatus.textContent = "Speech synthesis not supported in this browser.";
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+      speechStatus.textContent = "Speaking translated message.";
+    }
+
+    function pushHistory(label, message) {
+      const item = document.createElement("li");
+      const time = document.createElement("time");
+      time.textContent = new Date().toLocaleTimeString();
+      const title = document.createElement("strong");
+      title.textContent = label;
+      const body = document.createElement("span");
+      body.textContent = message;
+      item.appendChild(title);
+      item.appendChild(body);
+      item.appendChild(time);
+      historyEl.prepend(item);
+    }
+
+    function simulateRecognition() {
+      const sample = demoSigns[Math.floor(Math.random() * demoSigns.length)];
+      transcriptEl.textContent = `${sample.label}: ${sample.message}`;
+      pushHistory(sample.label, sample.message);
+      speak(sample.message);
+    }
+
+    function toggleAutoMode(enabled) {
+      if (enabled) {
+        simulateRecognition();
+        autoTimer = setInterval(simulateRecognition, 6000);
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
+    startButton.addEventListener("click", startCamera);
+    simulateButton.addEventListener("click", simulateRecognition);
+    clearHistoryButton.addEventListener("click", () => {
+      historyEl.innerHTML = "";
+      const li = document.createElement("li");
+      li.textContent = "History cleared.";
+      historyEl.appendChild(li);
+    });
+
+    autoMode.addEventListener("change", (event) => {
+      toggleAutoMode(event.target.checked);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (localStream) {
+        localStream.getTracks().forEach((t) => t.stop());
+      }
+    });
+  </script>
+</body>
+</html>
