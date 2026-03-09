@@ -94,23 +94,29 @@ export function CallScreen({ route, navigation }: Props) {
       leaveRoom();
       stopSpeech();
     };
-  }, [roomId, userName]); // intentional: join once when roomId/userName change
+    // joinRoom/leaveRoom/stopSpeech are stable useCallback references;
+    // roomId and userName are the params that determine which call to join.
+  }, [roomId, userName, joinRoom, leaveRoom, stopSpeech]);
 
   // ── Auto-speak new translations ──────────────────────────────────────────
+
+  // Extracted primitives to allow exhaustive deps without object churn
+  const autoSpeak = settings.autoSpeak;
+  const ttsEnabled = settings.ttsEnabled;
 
   const lastSpokenSentence = useRef('');
   useEffect(() => {
     const { fullSentence } = translationState;
     if (
-      settings.autoSpeak &&
-      settings.ttsEnabled &&
+      autoSpeak &&
+      ttsEnabled &&
       fullSentence &&
       fullSentence !== lastSpokenSentence.current
     ) {
       lastSpokenSentence.current = fullSentence;
       speakText(fullSentence);
     }
-  }, [translationState.fullSentence]); // intentional: only react to sentence changes
+  }, [translationState.fullSentence, autoSpeak, ttsEnabled, speakText]);
 
   // ── Camera frame capture loop ────────────────────────────────────────────
 

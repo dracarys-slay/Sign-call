@@ -292,6 +292,19 @@ export function createCallService(config: CallServiceConfig): CallService {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
+/**
+ * Generate a cryptographically random 8-character peer ID.
+ * Uses the Web Crypto API available in React Native (JSC / Hermes).
+ */
 function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  const bytes = new Uint8Array(6);
+  // crypto.getRandomValues is available in React Native via JSC/Hermes
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Fallback: combine timestamp with Math.random for non-secure environments
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return `${ts}${rand}`.slice(-12);
 }

@@ -11,9 +11,13 @@ import { createCallService } from '../services/CallService';
 import type { CallService } from '../services/CallService';
 import type { CallState, CallParticipant } from '../types';
 
-// Default signaling server — replace with a real deployed server.
-// A compatible open-source signaling server (e.g. simple-signaling-server)
-// can be self-hosted or run locally.
+// Default signaling server — must be replaced with a real deployed server before
+// going to production. A compatible open-source signaling server such as
+// `simple-peer-server` or `socket.io`-based relay can be self-hosted.
+//
+// During local development you can run:
+//   npx simple-peer-server --port 8080
+// and set signalingUrl to 'ws://localhost:8080'.
 const DEFAULT_SIGNALING_URL = 'wss://signaling.sign-call.example.com/ws';
 
 interface UseVideoCallOptions {

@@ -40,7 +40,6 @@
     },
     "plugins": [
       "expo-camera",
-      "expo-speech",
       "expo-av"
     ]
   }
