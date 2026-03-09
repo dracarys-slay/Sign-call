@@ -11,16 +11,28 @@ import { createCallService } from '../services/CallService';
 import type { CallService } from '../services/CallService';
 import type { CallState, CallParticipant } from '../types';
 
-// Default signaling server — must be replaced with a real deployed server before
-// going to production. A compatible open-source signaling server such as
-// `simple-peer-server` or `socket.io`-based relay can be self-hosted.
+// ── Signaling server URL ──────────────────────────────────────────────────────
 //
-// During local development you can run:
-//   npx simple-peer-server --port 8080
-// and set signalingUrl to 'ws://localhost:8080'.
-const DEFAULT_SIGNALING_URL = 'wss://signaling.sign-call.example.com/ws';
+// Override via the EXPO_PUBLIC_SIGNALING_URL environment variable so you can
+// target different servers in dev / staging / production without code changes:
+//
+//   # .env.local  (local development — run: node server/signaling.js)
+//   EXPO_PUBLIC_SIGNALING_URL=ws://localhost:8080/ws
+//
+//   # .env.production
+//   EXPO_PUBLIC_SIGNALING_URL=wss://signaling.your-domain.com/ws
+//
+// See server/signaling.js for the bundled Node.js signaling server.
+// See README.md for deployment instructions.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+const SIGNALING_URL: string =
+  // Expo loads variables prefixed EXPO_PUBLIC_ into process.env at build time
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_SIGNALING_URL) ||
+  'ws://localhost:8080/ws';
 
 interface UseVideoCallOptions {
+  /** Override the signaling server URL. Falls back to SIGNALING_URL constant. */
   signalingUrl?: string;
 }
 
@@ -47,7 +59,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}) {
 
   useEffect(() => {
     serviceRef.current = createCallService({
-      signalingServerUrl: options.signalingUrl ?? DEFAULT_SIGNALING_URL,
+      signalingServerUrl: options.signalingUrl ?? SIGNALING_URL,
 
       onLocalStream: (stream) => {
         setLocalStream(stream);

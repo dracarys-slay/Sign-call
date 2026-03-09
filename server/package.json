@@ -1,0 +1,17 @@
+{
+  "name": "sign-call-signaling",
+  "version": "1.0.0",
+  "description": "WebRTC signaling server for Sign Call",
+  "main": "signaling.js",
+  "scripts": {
+    "start": "node signaling.js",
+    "dev": "node --watch signaling.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
