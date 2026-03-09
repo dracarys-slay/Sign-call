@@ -12,4 +12,5 @@ web-build/
 *.log
 .env
 .env.*
+!.env.example
 server/node_modules/
