@@ -24,12 +24,24 @@ import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
+/**
+ * Generate a cryptographically random room ID in the format ABC-123.
+ * Uses crypto.getRandomValues (Web Crypto API, available in Hermes/JSC).
+ */
 function generateRoomId(): string {
-  // Format: ABC-123
-  const letters = Array.from({ length: 3 }, () =>
-    String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+  const letterBytes = new Uint8Array(3);
+  const digitBytes = new Uint8Array(2);
+  crypto.getRandomValues(letterBytes);
+  crypto.getRandomValues(digitBytes);
+
+  // Map each byte to a letter A–Z (26 letters, modulo 26)
+  const letters = Array.from(letterBytes, (b) =>
+    String.fromCharCode(65 + (b % 26)),
   ).join('');
-  const digits = Math.floor(100 + Math.random() * 900).toString();
+
+  // Map 2 bytes to a 3-digit number 100–999
+  const digits = (100 + ((digitBytes[0] << 8 | digitBytes[1]) % 900)).toString();
+
   return `${letters}-${digits}`;
 }
 

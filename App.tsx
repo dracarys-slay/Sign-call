@@ -2,6 +2,8 @@
  * App.tsx — Sign Call
  *
  * Root component. Sets up:
+ *   - Error boundary (catch unhandled React errors gracefully)
+ *   - Settings context (shared + persisted user preferences)
  *   - Safe area provider
  *   - React Navigation with a native stack
  *   - Dark status bar
@@ -16,6 +18,8 @@ import { StatusBar } from 'expo-status-bar';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CallScreen } from './src/screens/CallScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { SettingsProvider } from './src/context/SettingsContext';
 import type { RootStackParamList } from './src/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -36,36 +40,40 @@ const DARK_THEME = {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" backgroundColor="#0a1628" />
-      <NavigationContainer theme={DARK_THEME}>
-        <Stack.Navigator
-          initialRouteName="Home"
-          screenOptions={{
-            headerStyle: { backgroundColor: '#0f2744' },
-            headerTintColor: '#e2e8f0',
-            headerTitleStyle: { fontWeight: '700', fontSize: 18 },
-            headerBackButtonDisplayMode: 'minimal',
-            contentStyle: { backgroundColor: '#0a1628' },
-          }}
-        >
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Call"
-            component={CallScreen}
-            options={{ headerShown: false, gestureEnabled: false }}
-          />
-          <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{ title: 'Settings', headerBackTitle: 'Back' }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SettingsProvider>
+        <SafeAreaProvider>
+          <StatusBar style="light" backgroundColor="#0a1628" />
+          <NavigationContainer theme={DARK_THEME}>
+            <Stack.Navigator
+              initialRouteName="Home"
+              screenOptions={{
+                headerStyle: { backgroundColor: '#0f2744' },
+                headerTintColor: '#e2e8f0',
+                headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+                headerBackButtonDisplayMode: 'minimal',
+                contentStyle: { backgroundColor: '#0a1628' },
+              }}
+            >
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Call"
+                component={CallScreen}
+                options={{ headerShown: false, gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ title: 'Settings', headerBackTitle: 'Back' }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </SettingsProvider>
+    </ErrorBoundary>
   );
 }

@@ -7,6 +7,8 @@
  *   - TTS enabled / voice / rate / pitch
  *   - Detection sensitivity
  *   - Auto-speak toggle
+ *
+ * Settings are read from and persisted via SettingsContext (AsyncStorage).
  */
 
 import React, { useEffect, useState } from 'react';
@@ -24,27 +26,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Speech from 'expo-speech';
 import type { AppSettings, RootStackParamList } from '../types';
+import { useSettings } from '../context/SettingsContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 const SIGN_LANGUAGES: AppSettings['signLanguage'][] = ['ASL', 'BSL', 'ISL'];
 
-const DEFAULT_SETTINGS: AppSettings = {
-  signLanguage: 'ASL',
-  ttsEnabled: true,
-  ttsVoice: '',
-  ttsRate: 0.9,
-  ttsPitch: 1.0,
-  translationDisplayDuration: 3000,
-  autoSpeak: true,
-  userName: '',
-  showLandmarks: false,
-  detectionSensitivity: 0.45,
-};
-
 export function SettingsScreen({ navigation }: Props) {
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const { settings: savedSettings, replaceSettings } = useSettings();
+
+  // Local draft so the user can discard unsaved changes
+  const [draft, setDraft] = useState<AppSettings>(savedSettings);
   const [voices, setVoices] = useState<Speech.Voice[]>([]);
+
+  // Keep draft in sync when navigating back to this screen
+  useEffect(() => {
+    setDraft(savedSettings);
+  }, [savedSettings]);
 
   useEffect(() => {
     Speech.getAvailableVoicesAsync()
@@ -53,11 +51,13 @@ export function SettingsScreen({ navigation }: Props) {
   }, []);
 
   function update<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSave() {
-    // In a real app this would persist to AsyncStorage / context
+  async function handleSave() {
+    // replaceSettings atomically updates context state AND persists to AsyncStorage,
+    // avoiding any stale-closure hazard from calling updateSetting() + saveSettings().
+    await replaceSettings(draft);
     Alert.alert('Saved', 'Your settings have been saved.', [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);
@@ -65,9 +65,9 @@ export function SettingsScreen({ navigation }: Props) {
 
   function previewTTS() {
     Speech.speak('Hello, I am using Sign Call to communicate with you.', {
-      rate: settings.ttsRate,
-      pitch: settings.ttsPitch,
-      voice: settings.ttsVoice || undefined,
+      rate: draft.ttsRate,
+      pitch: draft.ttsPitch,
+      voice: draft.ttsVoice || undefined,
     });
   }
 
@@ -88,7 +88,7 @@ export function SettingsScreen({ navigation }: Props) {
           <SettingRow label="Display Name">
             <TextInput
               style={styles.textInput}
-              value={settings.userName}
+              value={draft.userName}
               onChangeText={(t) => update('userName', t)}
               placeholder="Your name"
               placeholderTextColor="#475569"
@@ -106,16 +106,16 @@ export function SettingsScreen({ navigation }: Props) {
                 key={lang}
                 style={[
                   styles.segmentBtn,
-                  settings.signLanguage === lang && styles.segmentBtnActive,
+                  draft.signLanguage === lang && styles.segmentBtnActive,
                 ]}
                 onPress={() => update('signLanguage', lang)}
                 accessibilityLabel={`Use ${lang}`}
-                accessibilityState={{ selected: settings.signLanguage === lang }}
+                accessibilityState={{ selected: draft.signLanguage === lang }}
               >
                 <Text
                   style={[
                     styles.segmentBtnText,
-                    settings.signLanguage === lang && styles.segmentBtnTextActive,
+                    draft.signLanguage === lang && styles.segmentBtnTextActive,
                   ]}
                 >
                   {lang}
@@ -138,7 +138,7 @@ export function SettingsScreen({ navigation }: Props) {
                   key={val}
                   style={[
                     styles.sensitivityBtn,
-                    Math.abs(settings.detectionSensitivity - val) < 0.05 &&
+                    Math.abs(draft.detectionSensitivity - val) < 0.05 &&
                       styles.sensitivityBtnActive,
                   ]}
                   onPress={() => update('detectionSensitivity', val)}
@@ -151,7 +151,7 @@ export function SettingsScreen({ navigation }: Props) {
           </SettingRow>
           <SettingRow label="Show Hand Landmarks" end>
             <Switch
-              value={settings.showLandmarks}
+              value={draft.showLandmarks}
               onValueChange={(v) => update('showLandmarks', v)}
               trackColor={{ false: '#374151', true: '#3b82f6' }}
               thumbColor="#fff"
@@ -164,7 +164,7 @@ export function SettingsScreen({ navigation }: Props) {
         <SettingSection title="Text-to-Speech">
           <SettingRow label="Enable TTS" end>
             <Switch
-              value={settings.ttsEnabled}
+              value={draft.ttsEnabled}
               onValueChange={(v) => update('ttsEnabled', v)}
               trackColor={{ false: '#374151', true: '#3b82f6' }}
               thumbColor="#fff"
@@ -173,12 +173,12 @@ export function SettingsScreen({ navigation }: Props) {
           </SettingRow>
           <SettingRow label="Auto-Speak Sentences" end>
             <Switch
-              value={settings.autoSpeak}
+              value={draft.autoSpeak}
               onValueChange={(v) => update('autoSpeak', v)}
               trackColor={{ false: '#374151', true: '#3b82f6' }}
               thumbColor="#fff"
               accessibilityLabel="Auto speak sentences"
-              disabled={!settings.ttsEnabled}
+              disabled={!draft.ttsEnabled}
             />
           </SettingRow>
           <SettingRow label="Speech Rate">
@@ -188,7 +188,7 @@ export function SettingsScreen({ navigation }: Props) {
                   key={val}
                   style={[
                     styles.sensitivityBtn,
-                    Math.abs(settings.ttsRate - val) < 0.05 && styles.sensitivityBtnActive,
+                    Math.abs(draft.ttsRate - val) < 0.05 && styles.sensitivityBtnActive,
                   ]}
                   onPress={() => update('ttsRate', val)}
                   accessibilityLabel={`Speech rate ${val}x`}
@@ -205,7 +205,7 @@ export function SettingsScreen({ navigation }: Props) {
                   key={val}
                   style={[
                     styles.sensitivityBtn,
-                    Math.abs(settings.ttsPitch - val) < 0.05 && styles.sensitivityBtnActive,
+                    Math.abs(draft.ttsPitch - val) < 0.05 && styles.sensitivityBtnActive,
                   ]}
                   onPress={() => update('ttsPitch', val)}
                   accessibilityLabel={`Pitch ${val}`}
@@ -222,7 +222,7 @@ export function SettingsScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={[
                     styles.voiceChip,
-                    !settings.ttsVoice && styles.voiceChipActive,
+                    !draft.ttsVoice && styles.voiceChipActive,
                   ]}
                   onPress={() => update('ttsVoice', '')}
                   accessibilityLabel="Default voice"
@@ -234,7 +234,7 @@ export function SettingsScreen({ navigation }: Props) {
                     key={v.identifier}
                     style={[
                       styles.voiceChip,
-                      settings.ttsVoice === v.identifier && styles.voiceChipActive,
+                      draft.ttsVoice === v.identifier && styles.voiceChipActive,
                     ]}
                     onPress={() => update('ttsVoice', v.identifier)}
                     accessibilityLabel={`Voice ${v.name}`}
@@ -249,7 +249,7 @@ export function SettingsScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.previewBtn}
             onPress={previewTTS}
-            disabled={!settings.ttsEnabled}
+            disabled={!draft.ttsEnabled}
             accessibilityLabel="Preview voice"
           >
             <Text style={styles.previewBtnText}>▶ Preview Voice</Text>
@@ -270,7 +270,7 @@ export function SettingsScreen({ navigation }: Props) {
         {/* Save */}
         <TouchableOpacity
           style={styles.saveBtn}
-          onPress={handleSave}
+          onPress={() => { void handleSave(); }}
           accessibilityLabel="Save settings"
           accessibilityRole="button"
         >

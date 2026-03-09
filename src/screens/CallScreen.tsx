@@ -30,8 +30,9 @@ import { TranslationDisplay } from '../components/TranslationDisplay';
 import { useVideoCall } from '../hooks/useVideoCall';
 import { useSignDetection } from '../hooks/useSignDetection';
 import { useSpeech } from '../hooks/useSpeech';
+import { useSettings } from '../context/SettingsContext';
 
-import type { AppSettings, RootStackParamList } from '../types';
+import type { RootStackParamList } from '../types';
 import type { CapturedFrame } from '../services/SignLanguageService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Call'>;
@@ -40,23 +41,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PIP_WIDTH = SCREEN_WIDTH * 0.32;
 const PIP_HEIGHT = PIP_WIDTH * 1.4;
 
-// Default settings — in a real app these come from a Settings store/context
-const DEFAULT_SETTINGS: AppSettings = {
-  signLanguage: 'ASL',
-  ttsEnabled: true,
-  ttsVoice: '',
-  ttsRate: 0.9,
-  ttsPitch: 1.0,
-  translationDisplayDuration: 3000,
-  autoSpeak: true,
-  userName: '',
-  showLandmarks: false,
-  detectionSensitivity: 0.45,
-};
-
 export function CallScreen({ route, navigation }: Props) {
   const { roomId, userName } = route.params;
-  const settings: AppSettings = { ...DEFAULT_SETTINGS, userName };
+
+  // Live settings from context — respects user preferences set in SettingsScreen
+  const { settings: contextSettings } = useSettings();
+  const settings = { ...contextSettings, userName };
 
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
