@@ -45,8 +45,8 @@ export async function speak(
 
     Speech.speak(trimmed, {
       language: 'en-US',
-      pitch: settings.ttsPitch,
-      rate: settings.ttsRate,
+      pitch: settings.ttsPitch || 1.0,
+      rate: settings.ttsRate || 0.85, // Slightly slower for clarity
       voice: settings.ttsVoice || undefined,
       onError: (err) => {
         console.warn('[SpeechService] Speech error:', err);

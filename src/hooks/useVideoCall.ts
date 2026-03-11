@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MediaStream } from 'react-native-webrtc';
+import { MediaStream } from '../utils/webrtc';
 import { createCallService } from '../services/CallService';
 import type { CallService } from '../services/CallService';
 import type { CallState, CallParticipant } from '../types';

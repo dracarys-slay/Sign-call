@@ -1,13 +1,11 @@
 /**
- * VideoView
+ * VideoView (Web version)
  *
- * Renders a single video stream (local or remote) with an optional
- * label and muted state indicator.
+ * Renders a single video stream using HTML5 video element
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { RTCView } from 'react-native-webrtc';
 import type { MediaStream } from '../utils/webrtc';
 
 interface Props {
@@ -29,15 +27,28 @@ export function VideoView({
   objectFit = 'cover',
   mirror = false,
 }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream as unknown as globalThis.MediaStream;
+    }
+  }, [stream]);
+
   return (
     <View style={[styles.container, style]}>
       {stream && !isCameraOff ? (
-        <RTCView
-          streamURL={stream.toURL()}
-          style={styles.video}
-          objectFit={objectFit}
-          mirror={mirror}
-          zOrder={0}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isMuted}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: objectFit,
+            transform: mirror ? 'scaleX(-1)' : 'none',
+          }}
         />
       ) : (
         <View style={styles.placeholder}>
@@ -73,10 +84,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#0f172a',
     position: 'relative',
-  },
-  video: {
-    width: '100%',
-    height: '100%',
   },
   placeholder: {
     flex: 1,

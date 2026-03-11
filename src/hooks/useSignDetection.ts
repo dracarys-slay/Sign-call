@@ -9,6 +9,7 @@
  *   - startDetection / stopDetection
  *   - clearSentence
  *   - isDetecting
+ *   - lastCompletedWord: the most recent word that was completed (for TTS)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -17,7 +18,7 @@ import * as SignLanguageService from '../services/SignLanguageService';
 import type { CapturedFrame } from '../services/SignLanguageService';
 
 // Time (ms) a sign must remain stable before being committed to the word
-const COMMIT_STABLE_MS = 600;
+const COMMIT_STABLE_MS = 350; // Faster detection for immediate conversion
 // Space sign: thumb + index extended while all others folded = space bar
 const SPACE_SIGN = ' ';
 // Clear sign pattern: all 5 fingers extended = clear
@@ -35,6 +36,7 @@ export function useSignDetection(
   settings: { ttsEnabled: boolean; autoSpeak: boolean; detectionSensitivity: number },
 ) {
   const [state, setState] = useState<TranslationState>(INITIAL_STATE);
+  const [lastCompletedWord, setLastCompletedWord] = useState<string>('');
 
   // Internal tracking refs (don't trigger re-renders)
   const lastSignRef = useRef('');
@@ -72,7 +74,12 @@ export function useSignDetection(
       if (sign === SPACE_SIGN || sign === ' ') {
         // Commit current word to sentence
         if (wordRef.current.trim()) {
-          sentenceRef.current = (sentenceRef.current + ' ' + wordRef.current).trim();
+          const completedWord = wordRef.current.trim();
+          sentenceRef.current = (sentenceRef.current + ' ' + completedWord).trim();
+
+          // Emit completed word for TTS
+          setLastCompletedWord(completedWord);
+
           wordRef.current = '';
           committedLettersRef.current = [];
           setState((prev) => ({
@@ -146,5 +153,6 @@ export function useSignDetection(
     clearSentence,
     processFrame,
     isDetecting: state.isDetecting,
+    lastCompletedWord, // For TTS to speak only complete words
   };
 }

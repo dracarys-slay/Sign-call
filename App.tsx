@@ -18,6 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CallScreen } from './src/screens/CallScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { SignGuideScreen } from './src/screens/SignGuideScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { SettingsProvider } from './src/context/SettingsContext';
 import type { RootStackParamList } from './src/types';
@@ -69,6 +70,11 @@ export default function App() {
                 name="Settings"
                 component={SettingsScreen}
                 options={{ title: 'Settings', headerBackTitle: 'Back' }}
+              />
+              <Stack.Screen
+                name="SignGuide"
+                component={SignGuideScreen}
+                options={{ title: 'Sign Language Guide', headerBackTitle: 'Back' }}
               />
             </Stack.Navigator>
           </NavigationContainer>

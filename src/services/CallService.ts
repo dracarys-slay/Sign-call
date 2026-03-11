@@ -22,7 +22,7 @@ import {
   RTCSessionDescription,
   MediaStream,
   mediaDevices,
-} from 'react-native-webrtc';
+} from '../utils/webrtc';
 import type { CallParticipant, SignalingMessage } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

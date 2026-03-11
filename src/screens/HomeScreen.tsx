@@ -102,8 +102,27 @@ export function HomeScreen({ navigation }: Props) {
             </Text>
           </View>
 
+          {/* Sign Language Guide Button - Prominent */}
+          <TouchableOpacity
+            style={styles.guideButton}
+            onPress={() => navigation.navigate('SignGuide')}
+            accessibilityLabel="Open sign language guide"
+            accessibilityRole="button"
+          >
+            <View style={styles.guideContent}>
+              <Text style={styles.guideEmoji}>📖🤟</Text>
+              <View style={styles.guideTextContainer}>
+                <Text style={styles.guideTitle}>Learn Sign Language</Text>
+                <Text style={styles.guideSubtitle}>
+                  Visual guide for deaf & non-speaking individuals
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
           {/* Feature list */}
           <View style={styles.featureList}>
+            <Text style={styles.featureHeader}>✨ App Features:</Text>
             {FEATURES.map((f) => (
               <View key={f.label} style={styles.featureItem}>
                 <Text style={styles.featureIcon}>{f.icon}</Text>
@@ -249,8 +268,43 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 280,
   },
+  guideButton: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+  },
+  guideContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  guideEmoji: {
+    fontSize: 36,
+  },
+  guideTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  guideTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#6ee7b7',
+  },
+  guideSubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    lineHeight: 17,
+  },
   featureList: {
     gap: 12,
+  },
+  featureHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#93c5fd',
+    marginBottom: 4,
   },
   featureItem: {
     flexDirection: 'row',

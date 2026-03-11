@@ -67,6 +67,7 @@ export type RootStackParamList = {
   Home: undefined;
   Call: { roomId: string; userName: string };
   Settings: undefined;
+  SignGuide: undefined;
 };
 
 // Finger extension state (index 0 = thumb, 4 = pinky)

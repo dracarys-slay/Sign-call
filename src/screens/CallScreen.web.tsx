@@ -1,25 +1,20 @@
 /**
- * CallScreen
+ * CallScreen (Web version)
  *
- * Main video call screen with:
- *   - Remote participant video (full screen)
- *   - Local camera preview (picture-in-picture)
- *   - Sign language detection overlay on local view
- *   - Translation display panel (text output)
- *   - Call controls (mute, camera, detection, hang up)
- *   - Text-to-speech for recognized signs
+ * Web-compatible video call screen using browser APIs:
+ * - getUserMedia for camera access
+ * - Canvas for frame capture
+ * - Automatic sign detection on call join
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
-  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, CameraView } from 'expo-camera';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { VideoView } from '../components/VideoView';
@@ -44,13 +39,14 @@ const PIP_HEIGHT = PIP_WIDTH * 1.4;
 export function CallScreen({ route, navigation }: Props) {
   const { roomId, userName } = route.params;
 
-  // Live settings from context — respects user preferences set in SettingsScreen
   const { settings: contextSettings } = useSettings();
   const settings = { ...contextSettings, userName };
 
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
-  const cameraRef = useRef<CameraView>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Hooks
@@ -69,12 +65,36 @@ export function CallScreen({ route, navigation }: Props) {
 
   const { speakText, stopSpeech } = useSpeech(settings);
 
-  // ── Permissions ──────────────────────────────────────────────────────────
+  // ── Camera setup (auto-start) ────────────────────────────────────────────
 
   useEffect(() => {
-    Camera.requestCameraPermissionsAsync().then(({ status }) => {
-      setHasCameraPermission(status === 'granted');
-    });
+    async function setupCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: 640, height: 480 },
+          audio: true,
+        });
+        setLocalStream(stream);
+        setHasCameraPermission(true);
+
+        // Attach to video element
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error('Camera access denied:', err);
+        setHasCameraPermission(false);
+      }
+    }
+
+    setupCamera();
+
+    return () => {
+      // Cleanup: stop all tracks
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, []);
 
   // ── Join call on mount ───────────────────────────────────────────────────
@@ -85,22 +105,19 @@ export function CallScreen({ route, navigation }: Props) {
       leaveRoom();
       stopSpeech();
     };
-    // joinRoom/leaveRoom/stopSpeech are stable useCallback references;
-    // roomId and userName are the params that determine which call to join.
   }, [roomId, userName, joinRoom, leaveRoom, stopSpeech]);
 
   // ── Auto-start sign detection ────────────────────────────────────────────
 
   useEffect(() => {
-    // Automatically start detection when camera permission is granted
-    if (hasCameraPermission && !isDetecting) {
+    // Automatically start detection when camera is ready
+    if (hasCameraPermission && localStream && !isDetecting) {
       startDetecting();
     }
-  }, [hasCameraPermission, isDetecting, startDetecting]);
+  }, [hasCameraPermission, localStream, isDetecting, startDetecting]);
 
   // ── Auto-speak new translations ──────────────────────────────────────────
 
-  // Extracted primitives to allow exhaustive deps without object churn
   const autoSpeak = settings.autoSpeak;
   const ttsEnabled = settings.ttsEnabled;
 
@@ -118,31 +135,43 @@ export function CallScreen({ route, navigation }: Props) {
     }
   }, [lastCompletedWord, autoSpeak, ttsEnabled, speakText]);
 
-  // ── Camera frame capture loop ────────────────────────────────────────────
+  // ── Camera frame capture loop (auto-capture for sign detection) ──────────
 
   const captureAndProcess = useCallback(async () => {
-    if (!cameraRef.current || !isDetecting) return;
+    if (!videoRef.current || !canvasRef.current || !isDetecting) return;
+
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.4,
-        base64: true,
-        skipProcessing: true,
-      });
-      if (photo?.base64) {
-        const frame: CapturedFrame = {
-          dataUri: `data:image/jpeg;base64,${photo.base64}`,
-          width: photo.width,
-          height: photo.height,
-        };
-        await processFrame(frame);
-      }
-    } catch {
-      // frame capture can fail sporadically — silently ignore
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+
+      // Set canvas size to match video
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Draw current video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to base64 JPEG
+      const dataUri = canvas.toDataURL('image/jpeg', 0.4);
+
+      const frame: CapturedFrame = {
+        dataUri,
+        width: canvas.width,
+        height: canvas.height,
+      };
+
+      await processFrame(frame);
+    } catch (err) {
+      // Silently ignore frame capture errors
+      console.warn('Frame capture error:', err);
     }
   }, [isDetecting, processFrame]);
 
   useEffect(() => {
-    if (isDetecting) {
+    if (isDetecting && localStream) {
       frameTimerRef.current = setInterval(captureAndProcess, 200); // ~5 fps
     } else {
       if (frameTimerRef.current) {
@@ -153,7 +182,7 @@ export function CallScreen({ route, navigation }: Props) {
     return () => {
       if (frameTimerRef.current) clearInterval(frameTimerRef.current);
     };
-  }, [isDetecting, captureAndProcess]);
+  }, [isDetecting, localStream, captureAndProcess]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -168,8 +197,14 @@ export function CallScreen({ route, navigation }: Props) {
   const handleHangUp = useCallback(() => {
     stopDetecting();
     leaveRoom();
+
+    // Stop camera
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+
     navigation.goBack();
-  }, [stopDetecting, leaveRoom, navigation]);
+  }, [stopDetecting, leaveRoom, localStream, navigation]);
 
   const handleSpeak = useCallback(
     (text: string) => {
@@ -193,7 +228,7 @@ export function CallScreen({ route, navigation }: Props) {
         <Text style={styles.permissionTitle}>Camera Permission Required</Text>
         <Text style={styles.permissionText}>
           Sign Call needs camera access for video calling and sign language detection.
-          Please enable camera permissions in your device settings.
+          Please enable camera permissions in your browser.
         </Text>
       </SafeAreaView>
     );
@@ -201,8 +236,6 @@ export function CallScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a1628" />
-
       {/* ── Main video area ── */}
       <View style={styles.videoArea}>
         {/* Remote participant (full screen) */}
@@ -218,18 +251,32 @@ export function CallScreen({ route, navigation }: Props) {
 
         {/* Local camera preview (PiP) + sign detection */}
         <View style={styles.pipContainer}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.pip}
-            facing="front"
-          >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: 'scaleX(-1)', // Mirror for front camera
+            }}
+          />
+          <View style={styles.overlayContainer}>
             <SignOverlay
               currentSign={translationState.currentSign}
               confidence={translationState.confidence}
               isDetecting={isDetecting}
             />
-          </CameraView>
+          </View>
         </View>
+
+        {/* Hidden canvas for frame capture */}
+        <canvas
+          ref={canvasRef}
+          style={{ display: 'none' }}
+        />
 
         {/* Room ID banner */}
         <View style={styles.roomBanner}>
@@ -258,13 +305,13 @@ export function CallScreen({ route, navigation }: Props) {
 
       {/* ── Translation display ── */}
       <View style={styles.translationPanel}>
-          <TranslationDisplay
-            translation={translationState}
-            onClear={clearSentence}
-            onSpeak={handleSpeak}
-            compact
-          />
-        </View>
+        <TranslationDisplay
+          translation={translationState}
+          onClear={clearSentence}
+          onSpeak={handleSpeak}
+          compact
+        />
+      </View>
 
       {/* ── Call controls ── */}
       <CallControls
@@ -303,15 +350,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'rgba(59, 130, 246, 0.5)',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
   },
-  pip: {
-    width: '100%',
-    height: '100%',
+  overlayContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   roomBanner: {
     position: 'absolute',
