@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Android",
+      "request": "launch",
+      "type": "reactnative",
+      "platform": "android",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug iOS",
+      "request": "launch",
+      "type": "reactnative",
+      "platform": "ios",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Attach to Metro Bundler",
+      "request": "attach",
+      "type": "reactnative",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
